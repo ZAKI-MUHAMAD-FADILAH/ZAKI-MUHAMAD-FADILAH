@@ -12,6 +12,33 @@ jobs:
   metrics:
     runs-on: ubuntu-latest
 
+    # -------------------------------------------------------
+    # PALETTE - single source of truth for all four cards.
+    #
+    # Values are BARE hex with NO leading "#". That is the only form the card
+    # core accepts (3, 4, 6 or 8 hex digits). An invalid or empty value is not
+    # an error: the core silently falls back to the theme default, so a typo
+    # here would just look wrong instead of failing. That is why the quality
+    # gate below asserts the accent colour is actually present in the output.
+    #
+    # Tokens mirror GitHub's own light/dark defaults so the cards read as
+    # native UI in both modes. BG is 8-digit hex with alpha 00 = transparent,
+    # which lets the page background show through in either mode.
+    # -------------------------------------------------------
+    env:
+      CARD_USER: "ZAKI-MUHAMAD-FADILAH"
+      BG: "00000000"
+      L_TITLE: "0969da"
+      L_TEXT: "1f2328"
+      L_ICON: "57606a"
+      L_BORDER: "d0d7de"
+      L_PROG_BG: "eaeef2"
+      D_TITLE: "58a6ff"
+      D_TEXT: "c9d1d9"
+      D_ICON: "8b949e"
+      D_BORDER: "30363d"
+      D_PROG_BG: "21262d"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -63,7 +90,7 @@ jobs:
           fi
 
       # -------------------------------------------------------
-      # 3. GENERATE BASE STATS FIRST
+      # 3. STATS CARD - LIGHT VARIANT
       #
       # CONTRACT: `options` MUST stay on a single line.
       # YAML folded scalars (`>` / `>-`) join lines with a space, which produced
@@ -72,36 +99,79 @@ jobs:
       # status "error - permanent" ("contains unsafe characters"), which
       # fail_on_error converts into a failed job. JSON is used because a typo
       # fails loudly (JSON.parse) instead of being silently dropped.
+      #
+      # card_width is set explicitly: the core does NOT clamp it to the card
+      # minimum, and when it is omitted the stats card sizes itself from its
+      # title length (467px here) while top-langs sized itself to ~300px,
+      # which is why the two cards never lined up.
       # -------------------------------------------------------
-      - name: Generate GitHub Stats
+      - name: Generate stats card (light)
         uses: stats-organization/github-readme-stats-action@v2
         with:
           card: stats
-          options: '{"username":"ZAKI-MUHAMAD-FADILAH","show_icons":"true","theme":"transparent"}'
+          options: '{"username":"${{ env.CARD_USER }}","show_icons":"true","rank_icon":"github","custom_title":"GitHub Statistics","show":"prs_merged_percentage","role":"OWNER,ORGANIZATION_MEMBER,COLLABORATOR","card_width":"450","border_radius":"10","line_height":"28","title_color":"${{ env.L_TITLE }}","text_color":"${{ env.L_TEXT }}","icon_color":"${{ env.L_ICON }}","border_color":"${{ env.L_BORDER }}","ring_color":"${{ env.L_TITLE }}","bg_color":"${{ env.BG }}"}'
           path: profile/stats.svg
           token: ${{ secrets.STATS_TOKEN }}
           fail_on_error: true
 
       # -------------------------------------------------------
-      # 4. GENERATE ALL-REPO TOP LANGUAGES
+      # 4. STATS CARD - DARK VARIANT
+      # Same geometry, dark tokens. README selects it with a <picture> source
+      # on (prefers-color-scheme: dark).
       # -------------------------------------------------------
-      - name: Generate Top Languages
+      - name: Generate stats card (dark)
+        uses: stats-organization/github-readme-stats-action@v2
+        with:
+          card: stats
+          options: '{"username":"${{ env.CARD_USER }}","show_icons":"true","rank_icon":"github","custom_title":"GitHub Statistics","show":"prs_merged_percentage","role":"OWNER,ORGANIZATION_MEMBER,COLLABORATOR","card_width":"450","border_radius":"10","line_height":"28","title_color":"${{ env.D_TITLE }}","text_color":"${{ env.D_TEXT }}","icon_color":"${{ env.D_ICON }}","border_color":"${{ env.D_BORDER }}","ring_color":"${{ env.D_TITLE }}","bg_color":"${{ env.BG }}"}'
+          path: profile/stats-dark.svg
+          token: ${{ secrets.STATS_TOKEN }}
+          fail_on_error: true
+
+      # -------------------------------------------------------
+      # 5. TOP LANGUAGES - LIGHT VARIANT
+      # langs_count is 6, down from 10: everything below rank 6 was under 1%
+      # (Dockerfile 0.73, Java 0.48, Shell 0.39, Batchfile 0.18) and only
+      # added visual noise.
+      # -------------------------------------------------------
+      - name: Generate top languages card (light)
         uses: stats-organization/github-readme-stats-action@v2
         with:
           card: top-langs
-          options: '{"username":"ZAKI-MUHAMAD-FADILAH","layout":"compact","langs_count":"10","role":["OWNER","ORGANIZATION_MEMBER","COLLABORATOR"],"size_weight":"0.5","count_weight":"0.5","theme":"transparent"}'
+          options: '{"username":"${{ env.CARD_USER }}","layout":"compact","langs_count":"6","custom_title":"Language Distribution","role":"OWNER,ORGANIZATION_MEMBER,COLLABORATOR","size_weight":"0.5","count_weight":"0.5","card_width":"450","border_radius":"10","title_color":"${{ env.L_TITLE }}","text_color":"${{ env.L_TEXT }}","border_color":"${{ env.L_BORDER }}","prog_bar_bg_color":"${{ env.L_PROG_BG }}","bg_color":"${{ env.BG }}"}'
           path: profile/top-langs.svg
           token: ${{ secrets.STATS_TOKEN }}
           fail_on_error: true
 
       # -------------------------------------------------------
-      # 5. QUALITY GATE: never commit a broken or error card
+      # 6. TOP LANGUAGES - DARK VARIANT
+      # -------------------------------------------------------
+      - name: Generate top languages card (dark)
+        uses: stats-organization/github-readme-stats-action@v2
+        with:
+          card: top-langs
+          options: '{"username":"${{ env.CARD_USER }}","layout":"compact","langs_count":"6","custom_title":"Language Distribution","role":"OWNER,ORGANIZATION_MEMBER,COLLABORATOR","size_weight":"0.5","count_weight":"0.5","card_width":"450","border_radius":"10","title_color":"${{ env.D_TITLE }}","text_color":"${{ env.D_TEXT }}","border_color":"${{ env.D_BORDER }}","prog_bar_bg_color":"${{ env.D_PROG_BG }}","bg_color":"${{ env.BG }}"}'
+          path: profile/top-langs-dark.svg
+          token: ${{ secrets.STATS_TOKEN }}
+          fail_on_error: true
+
+      # -------------------------------------------------------
+      # 7. QUALITY GATE
+      #
+      # Three structural checks plus one semantic check. The semantic one
+      # matters most: the core accepts an unknown or malformed colour param
+      # WITHOUT failing and quietly renders the theme default, so a silent
+      # palette regression is only detectable by looking for the accent in
+      # the generated SVG.
       # -------------------------------------------------------
       - name: Validate generated cards
         run: |
           set -euo pipefail
 
-          for file in profile/stats.svg profile/top-langs.svg; do
+          check_card() {
+            file="$1"
+            accent="$2"
+
             if [ ! -s "$file" ]; then
               echo "Missing or empty card: $file"
               exit 1
@@ -116,19 +186,33 @@ jobs:
               echo "Error card detected: $file"
               exit 1
             fi
-          done
+
+            if ! grep -qi "#${accent}" "$file"; then
+              echo "Palette not applied, expected #${accent} in $file"
+              echo "The core ignored a colour param and fell back to the theme default."
+              exit 1
+            fi
+
+            echo "OK: $file"
+          }
+
+          check_card profile/stats.svg "${L_TITLE}"
+          check_card profile/stats-dark.svg "${D_TITLE}"
+          check_card profile/top-langs.svg "${L_TITLE}"
+          check_card profile/top-langs-dark.svg "${D_TITLE}"
 
           echo "Card validation OK"
 
       # -------------------------------------------------------
-      # 6. COMMIT GENERATED CARDS
+      # 8. COMMIT GENERATED CARDS
       # -------------------------------------------------------
       - name: Commit generated metrics
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add profile/stats.svg profile/top-langs.svg
+          git add profile/stats.svg profile/stats-dark.svg \
+            profile/top-langs.svg profile/top-langs-dark.svg
 
           if git diff --cached --quiet; then
             echo "No metrics changes."
