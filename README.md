@@ -64,8 +64,28 @@ My engineering approach emphasizes:
 
 <div align="center">
 
-<img height="170" src="https://raw.githubusercontent.com/ZAKI-MUHAMAD-FADILAH/ZAKI-MUHAMAD-FADILAH/main/profile/stats.svg" alt="GitHub stats" />
-<img height="170" src="https://raw.githubusercontent.com/ZAKI-MUHAMAD-FADILAH/ZAKI-MUHAMAD-FADILAH/main/profile/top-langs.svg" alt="Top languages" />
+<picture>
+  <source
+    media="(prefers-color-scheme: dark)"
+    srcset="https://raw.githubusercontent.com/ZAKI-MUHAMAD-FADILAH/ZAKI-MUHAMAD-FADILAH/main/profile/stats-dark.svg"
+  />
+  <img
+    width="410"
+    src="https://raw.githubusercontent.com/ZAKI-MUHAMAD-FADILAH/ZAKI-MUHAMAD-FADILAH/main/profile/stats.svg"
+    alt="GitHub statistics"
+  />
+</picture>
+<picture>
+  <source
+    media="(prefers-color-scheme: dark)"
+    srcset="https://raw.githubusercontent.com/ZAKI-MUHAMAD-FADILAH/ZAKI-MUHAMAD-FADILAH/main/profile/top-langs-dark.svg"
+  />
+  <img
+    width="410"
+    src="https://raw.githubusercontent.com/ZAKI-MUHAMAD-FADILAH/ZAKI-MUHAMAD-FADILAH/main/profile/top-langs.svg"
+    alt="Language distribution"
+  />
+</picture>
 
 </div>
 
@@ -75,7 +95,7 @@ My engineering approach emphasizes:
 
 </div>
 
-> The stats and top-languages cards are generated daily by a GitHub Actions workflow in this repository and committed as static SVG, so they do not depend on third-party runtime availability. The streak card is still rendered by an external widget.
+> The stats and language cards are generated daily by a GitHub Actions workflow in this repository and committed as static SVG, so they do not depend on third-party runtime availability. Each card ships a light and a dark variant, selected automatically by your system theme. The streak card is still rendered by an external widget.
 
 ---
 
