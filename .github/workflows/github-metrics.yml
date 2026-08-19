@@ -64,15 +64,20 @@ jobs:
 
       # -------------------------------------------------------
       # 3. GENERATE BASE STATS FIRST
+      #
+      # CONTRACT: `options` MUST stay on a single line.
+      # YAML folded scalars (`>` / `>-`) join lines with a space, which produced
+      # username="ZAKI-MUHAMAD-FADILAH " plus the keys " show_icons" / " theme".
+      # The card core validates username against /^[-\w/.,]+$/ and returns
+      # status "error - permanent" ("contains unsafe characters"), which
+      # fail_on_error converts into a failed job. JSON is used because a typo
+      # fails loudly (JSON.parse) instead of being silently dropped.
       # -------------------------------------------------------
       - name: Generate GitHub Stats
         uses: stats-organization/github-readme-stats-action@v2
         with:
           card: stats
-          options: >-
-            username=ZAKI-MUHAMAD-FADILAH
-            &show_icons=true
-            &theme=transparent
+          options: '{"username":"ZAKI-MUHAMAD-FADILAH","show_icons":"true","theme":"transparent"}'
           path: profile/stats.svg
           token: ${{ secrets.STATS_TOKEN }}
           fail_on_error: true
@@ -84,20 +89,39 @@ jobs:
         uses: stats-organization/github-readme-stats-action@v2
         with:
           card: top-langs
-          options: >-
-            username=ZAKI-MUHAMAD-FADILAH
-            &layout=compact
-            &langs_count=10
-            &role=OWNER,ORGANIZATION_MEMBER,COLLABORATOR
-            &size_weight=0.5
-            &count_weight=0.5
-            &theme=transparent
+          options: '{"username":"ZAKI-MUHAMAD-FADILAH","layout":"compact","langs_count":"10","role":["OWNER","ORGANIZATION_MEMBER","COLLABORATOR"],"size_weight":"0.5","count_weight":"0.5","theme":"transparent"}'
           path: profile/top-langs.svg
           token: ${{ secrets.STATS_TOKEN }}
           fail_on_error: true
 
       # -------------------------------------------------------
-      # 5. COMMIT GENERATED CARDS
+      # 5. QUALITY GATE: never commit a broken or error card
+      # -------------------------------------------------------
+      - name: Validate generated cards
+        run: |
+          set -euo pipefail
+
+          for file in profile/stats.svg profile/top-langs.svg; do
+            if [ ! -s "$file" ]; then
+              echo "Missing or empty card: $file"
+              exit 1
+            fi
+
+            if ! grep -q "<svg" "$file"; then
+              echo "Not an SVG document: $file"
+              exit 1
+            fi
+
+            if grep -qi "Something went wrong" "$file"; then
+              echo "Error card detected: $file"
+              exit 1
+            fi
+          done
+
+          echo "Card validation OK"
+
+      # -------------------------------------------------------
+      # 6. COMMIT GENERATED CARDS
       # -------------------------------------------------------
       - name: Commit generated metrics
         run: |
