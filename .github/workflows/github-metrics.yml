@@ -16,6 +16,55 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      # -------------------------------------------------------
+      # 1. VALIDATE PAT
+      # -------------------------------------------------------
+      - name: Validate GitHub PAT
+        env:
+          STATS_TOKEN: ${{ secrets.STATS_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          echo "Checking GitHub authentication..."
+
+          LOGIN=$(curl -fsSL \
+            -H "Authorization: Bearer ${STATS_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/user | jq -r '.login')
+
+          if [ "$LOGIN" != "ZAKI-MUHAMAD-FADILAH" ]; then
+            echo "Token authenticated as unexpected user: $LOGIN"
+            exit 1
+          fi
+
+          echo "PAT authentication OK"
+          echo "Authenticated user: $LOGIN"
+
+      # -------------------------------------------------------
+      # 2. TEST PRIVATE REPOSITORY ACCESS
+      # -------------------------------------------------------
+      - name: Validate Repository Access
+        env:
+          STATS_TOKEN: ${{ secrets.STATS_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          TOTAL=$(curl -fsSL \
+            -H "Authorization: Bearer ${STATS_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/user/repos?visibility=all&affiliation=owner,collaborator,organization_member&per_page=100" \
+            | jq 'length')
+
+          echo "Repositories accessible on first page: $TOTAL"
+
+          if [ "$TOTAL" -eq 0 ]; then
+            echo "Token cannot access repositories."
+            exit 1
+          fi
+
+      # -------------------------------------------------------
+      # 3. GENERATE BASE STATS FIRST
+      # -------------------------------------------------------
       - name: Generate GitHub Stats
         uses: stats-organization/github-readme-stats-action@v2
         with:
@@ -23,13 +72,14 @@ jobs:
           options: >-
             username=ZAKI-MUHAMAD-FADILAH
             &show_icons=true
-            &include_all_commits=true
-            &role=OWNER,ORGANIZATION_MEMBER,COLLABORATOR
             &theme=transparent
           path: profile/stats.svg
           token: ${{ secrets.STATS_TOKEN }}
           fail_on_error: true
 
+      # -------------------------------------------------------
+      # 4. GENERATE ALL-REPO TOP LANGUAGES
+      # -------------------------------------------------------
       - name: Generate Top Languages
         uses: stats-organization/github-readme-stats-action@v2
         with:
@@ -46,6 +96,9 @@ jobs:
           token: ${{ secrets.STATS_TOKEN }}
           fail_on_error: true
 
+      # -------------------------------------------------------
+      # 5. COMMIT GENERATED CARDS
+      # -------------------------------------------------------
       - name: Commit generated metrics
         run: |
           git config user.name "github-actions[bot]"
